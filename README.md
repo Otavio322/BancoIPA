@@ -50,7 +50,7 @@ Comandos SELECT avançados (com subqueries) para consultas de teste.
 
 Grupo:
 
-Ian
+Ian Gabriel
 
 Sabrina Beatriz
 
