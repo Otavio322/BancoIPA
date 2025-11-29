@@ -47,3 +47,11 @@ Criação do Trigger (tg_before_update_producao).
 Comandos INSERT para popular as tabelas com dados de teste.
 
 Comandos SELECT avançados (com subqueries) para consultas de teste.
+
+Grupo:
+Ian
+Sabrina
+Daniel Cabral
+Marcelo Bezerra
+Marcelo Martins
+Otávio Augusto
