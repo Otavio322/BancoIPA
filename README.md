@@ -50,8 +50,13 @@ Comandos SELECT avançados (com subqueries) para consultas de teste.
 
 Grupo:
 Ian
-Sabrina
+
+Sabrina 
+
 Daniel Cabral
+
 Marcelo Bezerra
+
 Marcelo Martins
+
 Otávio Augusto
