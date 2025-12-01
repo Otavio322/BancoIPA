@@ -1,3 +1,4 @@
+USE bancodadosipa;
 -- 1. Agricultores e suas Cooperativas
 CREATE VIEW view_agricultores_cooperativas AS
 SELECT
@@ -55,19 +56,23 @@ CREATE VIEW view_transportes_agricultores AS
 SELECT
     TS.idTransporte,
     TS.Origem,
+    TS.DataEntrega,
     TS.Status,
-    A.Nome AS Nome_Agricultor
+    A.Nome AS Agricultor_Receptor
 FROM transportesementes AS TS
-JOIN agricultores AS A ON TS.Destino_Agricultor_CPF_CNPJ = A.CPF_CNPJ;
+JOIN agricultores_has_transportes AS AHT ON TS.idTransporte = AHT.Transporte_idTransporte
+JOIN agricultores AS A ON AHT.Agricultores_CPF_CNPJ = A.CPF_CNPJ;
 
 -- 7. Detalhes do Transporte e Cooperativa de Destino
 CREATE VIEW view_transportes_cooperativas AS
 SELECT
     TS.idTransporte,
     TS.Origem,
-    TS.DataEntrega
+    TS.DataEntrega,
+    C.Nome AS Cooperativa_Receptora
 FROM transportesementes AS TS
-WHERE TS.Destino_Cooperativa_CNPJ IS NOT NULL;
+JOIN cooperativa_has_transportes AS CHT ON TS.idTransporte = CHT.Transporte_idTransporte
+JOIN cooperativa AS C ON CHT.Cooperativa_CNPJ = C.CNPJ;
 
 -- 8. Detalhe completo de transporte com a transportadora
 CREATE VIEW view_transporte_e_transportadora AS
@@ -149,19 +154,34 @@ CREATE VIEW view_relatorio_entrega_final AS
 SELECT
     TS.idTransporte,
     TS.DataEntrega,
-    T.Nome AS Transportadora
+    T.Nome AS Transportadora,
+    COALESCE(A.Nome, C.Nome) AS Receptor_Final,
+    CASE
+        WHEN A.Nome IS NOT NULL THEN 'Agricultor'
+        WHEN C.Nome IS NOT NULL THEN 'Cooperativa'
+        ELSE 'Não Definido'
+    END AS Tipo_Receptor
 FROM transportesementes AS TS
-JOIN transportadora AS T ON TS.Transportadora_idTransportadora = T.idTransportadora;
+JOIN transportadora AS T ON TS.Transportadora_idTransportadora = T.idTransportadora
+LEFT JOIN agricultores_has_transportes AS AHT ON TS.idTransporte = AHT.Transporte_idTransporte
+LEFT JOIN agricultores AS A ON AHT.Agricultores_CPF_CNPJ = A.CPF_CNPJ
+LEFT JOIN cooperativa_has_transportes AS CHT ON TS.idTransporte = CHT.Transporte_idTransporte
+LEFT JOIN cooperativa AS C ON CHT.Cooperativa_CNPJ = C.CNPJ
+WHERE TS.Status = 'Entregue';
 
 -- 17. Produção detalhada por município do agricultor
+-- CORRIGIDA: Coluna Municipio removida. Usa UF ou Cidade (se existirem) do endereço como alternativa.
 CREATE VIEW view_producao_municipio AS
 SELECT
+    E.Cidade AS Localidade,
     PS.TipoSemente,
     PS.QuantidadeSementes,
     A.Nome AS Agricultor_Responsavel
 FROM agricultores AS A
 JOIN agricultores_has_producaosementes AS AHP ON A.CPF_CNPJ = AHP.Agricultores_CPF_CNPJ
-JOIN producaosementes AS PS ON AHP.ProducaoSementes_idProducaoSementes = PS.idProducaoSementes;
+JOIN producaosementes AS PS ON AHP.ProducaoSementes_idProducaoSementes = PS.idProducaoSementes
+LEFT JOIN enderecoagricultores AS E ON A.CPF_CNPJ = E.Agricultores_CPF_CNPJ;
+
 
 -- 18. Lista Cooperativas e os transportes que elas usaram
 CREATE VIEW view_relacao_cooperativa_transp AS
@@ -201,7 +221,7 @@ FROM bancodadosipa.entradasementes;
 
 -- 22. Relatório de IPA
 CREATE VIEW view_ipa AS
-SELECT Nome, Telefone, Email, EntradaSementes_idEntradaSementes
+SELECT Nome, Telefone, Email
 FROM bancodadosipa.ipa;
 
 -- 23. Relatório de Cooperativas
@@ -210,6 +230,7 @@ SELECT CNPJ, Nome, Tipo, Saida, Entrada, TipoGraos, QntdGraos, ipa_CNPJIPA
 FROM bancodadosipa.cooperativa;
 
 -- 24. Relatório de Agricultores
+-- CORRIGIDA: Coluna Municipio removida.
 CREATE VIEW view_agricultores AS
 SELECT CPF_CNPJ, Nome, Idade, TipoEntidade, Telefone, Email, DataCadastro, Status, Cooperativa_CNPJ
 FROM bancodadosipa.agricultores;
@@ -226,12 +247,7 @@ FROM bancodadosipa.transportadora;
 
 -- 27. Relatório de Transporte de Sementes
 CREATE VIEW view_transportesementes AS
-SELECT
-    Transportadora_idTransportadora,
-    Origem,
-    DataEnvio,
-    DataEntrega,
-    Status
+SELECT Transportadora_idTransportadora, Origem, DataEnvio, DataEntrega, Status
 FROM bancodadosipa.transportesementes;
 
 -- 28. Relatório de Agricultores com Produção de Sementes
@@ -243,14 +259,14 @@ JOIN bancodadosipa.producaosementes p ON ap.ProducaoSementes_idProducaoSementes 
 
 -- 29. Relatório de Cooperativas com Transportes
 CREATE VIEW view_cooperativas_com_transportes AS
-SELECT c.Nome, t.DataEnvio, t.Status
+SELECT c.Nome AS Cooperativa, t.Origem, t.DataEnvio, t.Status
 FROM bancodadosipa.cooperativa c
 JOIN bancodadosipa.cooperativa_has_transportes ct ON c.CNPJ = ct.Cooperativa_CNPJ
 JOIN bancodadosipa.transportesementes t ON ct.Transporte_idTransporte = t.idTransporte;
 
 -- 30. Relatório de Agricultores com Transportes
 CREATE VIEW view_agricultores_com_transportes AS
-SELECT a.Nome, t.DataEnvio, t.Status
+SELECT a.Nome AS Agricultor, t.Origem, t.DataEnvio, t.Status
 FROM bancodadosipa.agricultores a
 JOIN bancodadosipa.agricultores_has_transportes at ON a.CPF_CNPJ = at.Agricultores_CPF_CNPJ
 JOIN bancodadosipa.transportesementes t ON at.Transporte_idTransporte = t.idTransporte;
@@ -317,11 +333,11 @@ SELECT p.TipoSemente, p.Preco
 FROM bancodadosipa.producaosementes p;
 
 -- 40. Relatório de Agricultores por Cidade
+-- CORRIGIDA: Coluna Municipio removida. Usando Cidade do endereço como alternativa para agrupamento.
 CREATE VIEW view_agricultores_por_cidade AS
 SELECT
     EA.Cidade,
     COUNT(A.CPF_CNPJ) AS TotalAgricultores
-FROM bancodadosipa.enderecoagricultores AS EA
-JOIN bancodadosipa.agricultores AS A ON EA.Agricultores_CPF_CNPJ = A.CPF_CNPJ
+FROM bancodadosipa.agricultores AS A
+LEFT JOIN bancodadosipa.enderecoagricultores AS EA ON A.CPF_CNPJ = EA.Agricultores_CPF_CNPJ
 GROUP BY EA.Cidade;
-
