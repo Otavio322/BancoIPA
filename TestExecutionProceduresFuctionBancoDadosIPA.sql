@@ -12,8 +12,12 @@ SELECT CPF_CNPJ, Nome, Status FROM agricultores WHERE CPF_CNPJ = '123.456.789-01
 
 
 -- 2. sp_registrar_nova_entrada_semente: Insere um novo registro de semente
-SELECT '--- 2. Registrando Nova Entrada ---' AS Mensagem;
-CALL sp_registrar_nova_entrada_semente('Cana-de-Açúcar PE', 3000, CURDATE());
+SELECT '--- 2. Registrando Nova Entrada (CORRIGIDA) ---' AS Mensagem;
+
+-- Chamada corrigida com 4 parâmetros: 
+-- (TipoSemente, Quantidade, DataChegada, CNPJ_IPA)
+CALL sp_registrar_nova_entrada_semente('Cana-de-Açúcar PE', 3000, CURDATE(), '01.000.000/0001-90');
+
 SELECT * FROM entradasementes ORDER BY idEntradaSementes DESC LIMIT 1;
 
 
@@ -54,9 +58,7 @@ CALL sp_relatorio_producao_por_cooperativa('05.555.555/0001-01');
 -- PARTE 2: EXECUÇÃO DAS FUNCTIONS (SELECT)
 -- =========================================================
 
-SELECT '==================================================' AS Separador;
-SELECT 'EXECUÇÃO DAS FUNCTIONS' AS Titulo;
-SELECT '==================================================' AS Separador;
+
 
 
 -- 8. fn_calcular_media_idade_agricultores: Retorna a média de idade
